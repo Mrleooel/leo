@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+
+{% block title %}预约管理 - 社区医疗健康平台{% endblock %}
+{% block page_title %}预约管理{% endblock %}
+
+{% block content %}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">查询预约</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label">患者姓名</label>
+                <input type="text" class="form-control" id="searchPatientName" placeholder="输入患者姓名">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">开始日期</label>
+                <input type="date" class="form-control" id="searchStartDate">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">结束日期</label>
+                <input type="date" class="form-control" id="searchEndDate">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">医生</label>
+                <select class="form-select" id="searchDoctor">
+                    <option value="">全部医生</option>
+                    {% for doctor in doctors %}
+                    <option value="{{ doctor.id }}">{{ doctor.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 text-end">
+                <button class="btn btn-outline-primary" onclick="searchAppointments()">查询</button>
+                <button class="btn btn-outline-secondary" onclick="clearSearch()">清空</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">预约列表</h5>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAppointmentModal">
+            <i class="fas fa-plus"></i> 添加预约
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>患者</th>
+                        <th>医生</th>
+                        <th>科室</th>
+                        <th>预约时间</th>
+                        <th>状态</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appointment in appointments %}
+                    <tr>
+                        <td>{{ appointment.id }}</td>
+                        <td>{{ appointment.patient.name }}</td>
+                        <td>{{ appointment.doctor.name }}</td>
+                        <td>{{ appointment.doctor.department }}</td>
+                        <td>{{ appointment.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if appointment.status == 'scheduled' %}
+                            <span class="badge bg-primary">已预约</span>
+                            {% elif appointment.status == 'confirmed' %}
+                            <span class="badge bg-info">已确认</span>
+                            {% elif appointment.status == 'completed' %}
+                            <span class="badge bg-success">已完成</span>
+                            {% elif appointment.status == 'cancelled' %}
+                            <span class="badge bg-danger">已取消</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ appointment.notes or '无' }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editAppointment({{ appointment.id }}, {{ appointment.patient.id }}, {{ appointment.doctor.id }}, '{{ appointment.date.strftime('%Y-%m-%d %H:%M') }}', '{{ appointment.status }}', '{{ appointment.notes or '' }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="changeStatus({{ appointment.id }}, '{{ appointment.status }}')">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAppointment({{ appointment.id }}, '{{ appointment.patient.name }}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 添加预约模态框 -->
+<div class="modal fade" id="addAppointmentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加预约</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAppointmentForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentPatient" class="form-label">患者</label>
+                                <select class="form-select" id="appointmentPatient" required>
+                                    <option value="">请选择患者</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.id }}">{{ patient.name }} ({{ patient.contact }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentDoctor" class="form-label">医生</label>
+                                <select class="form-select" id="appointmentDoctor" required>
+                                    <option value="">请选择医生</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">{{ doctor.name }} ({{ doctor.department }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentDate" class="form-label">预约日期</label>
+                                <input type="date" class="form-control" id="appointmentDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentTime" class="form-label">预约时间</label>
+                                <input type="time" class="form-control" id="appointmentTime" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appointmentStatus" class="form-label">状态</label>
+                        <select class="form-select" id="appointmentStatus" required>
+                            <option value="scheduled">已预约</option>
+                            <option value="confirmed">已确认</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appointmentNotes" class="form-label">备注</label>
+                        <textarea class="form-control" id="appointmentNotes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addAppointment()">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑预约模态框 -->
+<div class="modal fade" id="editAppointmentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑预约</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editAppointmentForm">
+                    <input type="hidden" id="editAppointmentId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentPatient" class="form-label">患者</label>
+                                <select class="form-select" id="editAppointmentPatient" required>
+                                    <option value="">请选择患者</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.id }}">{{ patient.name }} ({{ patient.contact }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentDoctor" class="form-label">医生</label>
+                                <select class="form-select" id="editAppointmentDoctor" required>
+                                    <option value="">请选择医生</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">{{ doctor.name }} ({{ doctor.department }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentDate" class="form-label">预约日期</label>
+                                <input type="date" class="form-control" id="editAppointmentDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentTime" class="form-label">预约时间</label>
+                                <input type="time" class="form-control" id="editAppointmentTime" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAppointmentStatus" class="form-label">状态</label>
+                        <select class="form-select" id="editAppointmentStatus" required>
+                            <option value="scheduled">已预约</option>
+                            <option value="confirmed">已确认</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAppointmentNotes" class="form-label">备注</label>
+                        <textarea class="form-control" id="editAppointmentNotes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateAppointment()">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 状态更改模态框 -->
+<div class="modal fade" id="changeStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">更改预约状态</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="changeStatusForm">
+                    <input type="hidden" id="changeStatusAppointmentId">
+                    <div class="mb-3">
+                        <label for="newStatus" class="form-label">新状态</label>
+                        <select class="form-select" id="newStatus" required>
+                            <option value="">请选择状态</option>
+                            <option value="scheduled">已预约</option>
+                            <option value="confirmed">已确认</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="confirmChangeStatus()">确认更改</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+function searchAppointments() {
+    const params = new URLSearchParams();
+    const patientName = document.getElementById('searchPatientName').value;
+    const startDate = document.getElementById('searchStartDate').value;
+    const endDate = document.getElementById('searchEndDate').value;
+    const doctorId = document.getElementById('searchDoctor').value;
+
+    if (patientName) params.set('patient_name', patientName);
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    if (doctorId) params.set('doctor_id', doctorId);
+
+    fetch(`/search/appointments?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(apt => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${apt.id}</td>
+                    <td>${apt.patient_name}</td>
+                    <td>${apt.doctor_name}</td>
+                    <td>${apt.department}</td>
+                    <td>${apt.date}</td>
+                    <td><span class="badge bg-primary">${apt.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editAppointment(
+                        ${apt.id},
+                        ${apt.patient_id},
+                        ${apt.doctor_id},
+                        '${apt.date}',
+                        '${apt.status}',
+                        '${apt.notes || ''}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+function clearSearch() {
+    document.getElementById('searchPatientName').value = '';
+    document.getElementById('searchStartDate').value = '';
+    document.getElementById('searchEndDate').value = '';
+    document.getElementById('searchDoctor').value = '';
+    location.reload(); // 恢复原始列表
+}
+
+// 添加预约
+function addAppointment() {
+    const patientId = document.getElementById('appointmentPatient').value;
+    const doctorId = document.getElementById('appointmentDoctor').value;
+    const date = document.getElementById('appointmentDate').value;
+    const time = document.getElementById('appointmentTime').value;
+    const status = document.getElementById('appointmentStatus').value;
+    const notes = document.getElementById('appointmentNotes').value;
+    
+    if (!patientId || !doctorId || !date || !time) {
+        alert('请填写必填字段');
+        return;
+    }
+    
+    const appointmentDateTime = `${date} ${time}`;
+    
+    const formData = {
+        patient_id: parseInt(patientId),
+        doctor_id: parseInt(doctorId),
+        date: appointmentDateTime,
+        status: status,
+        notes: notes
+    };
+    
+    fetch('/appointments/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('添加失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('添加失败');
+    });
+}
+
+// 编辑预约
+function editAppointment(id, patientId, doctorId, dateTime, status, notes) {
+    document.getElementById('editAppointmentId').value = id;
+    document.getElementById('editAppointmentPatient').value = patientId;
+    document.getElementById('editAppointmentDoctor').value = doctorId;
+    document.getElementById('editAppointmentStatus').value = status;
+    document.getElementById('editAppointmentNotes').value = notes;
+    
+    // 解析日期时间
+    const [date, time] = dateTime.split(' ');
+    document.getElementById('editAppointmentDate').value = date;
+    document.getElementById('editAppointmentTime').value = time;
+    
+    new bootstrap.Modal(document.getElementById('editAppointmentModal')).show();
+}
+
+// 更新预约
+function updateAppointment() {
+    const id = document.getElementById('editAppointmentId').value;
+    const patientId = document.getElementById('editAppointmentPatient').value;
+    const doctorId = document.getElementById('editAppointmentDoctor').value;
+    const date = document.getElementById('editAppointmentDate').value;
+    const time = document.getElementById('editAppointmentTime').value;
+    const status = document.getElementById('editAppointmentStatus').value;
+    const notes = document.getElementById('editAppointmentNotes').value;
+    
+    if (!patientId || !doctorId || !date || !time) {
+        alert('请填写必填字段');
+        return;
+    }
+    
+    const appointmentDateTime = `${date} ${time}`;
+    
+    const formData = {
+        patient_id: parseInt(patientId),
+        doctor_id: parseInt(doctorId),
+        date: appointmentDateTime,
+        status: status,
+        notes: notes
+    };
+    
+    fetch(`/appointments/edit/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新失败');
+    });
+}
+
+// 更改状态
+function changeStatus(id, currentStatus) {
+    document.getElementById('changeStatusAppointmentId').value = id;
+    document.getElementById('newStatus').value = currentStatus;
+    
+    new bootstrap.Modal(document.getElementById('changeStatusModal')).show();
+}
+
+// 确认更改状态
+function confirmChangeStatus() {
+    const id = document.getElementById('changeStatusAppointmentId').value;
+    const newStatus = document.getElementById('newStatus').value;
+    
+    if (!newStatus) {
+        alert('请选择新状态');
+        return;
+    }
+    
+    fetch(`/appointments/status/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({status: newStatus})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('状态更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('状态更新失败');
+    });
+}
+
+// 删除预约
+function deleteAppointment(id, patientName) {
+    if (!confirm(`确定要删除患者 "${patientName}" 的预约吗？此操作不可恢复！`)) {
+        return;
+    }
+    
+    fetch(`/appointments/delete/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('删除失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败');
+    });
+}
+</script>
+{% endblock %} 

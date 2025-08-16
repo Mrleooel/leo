@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}患者管理 - 社区医疗健康平台{% endblock %}
+{% block page_title %}患者管理{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">患者列表</h5>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+            <i class="fas fa-plus"></i> 添加患者
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>姓名</th>
+                        <th>联系方式</th>
+                        <th>年龄</th>
+                        <th>性别</th>
+                        <th>地址</th>
+                        <th>注册日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in patients %}
+                    <tr>
+                        <td>{{ patient.id }}</td>
+                        <td>{{ patient.name }}</td>
+                        <td>{{ patient.contact }}</td>
+                        <td>{{ patient.age }}</td>
+                        <td>{{ patient.gender }}</td>
+                        <td>{{ patient.address or '未设置' }}</td>
+                        <td>{{ patient.register_date.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editPatient({{ patient.id }}, '{{ patient.name }}', '{{ patient.contact }}', {{ patient.age }}, '{{ patient.gender }}', '{{ patient.address or '' }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deletePatient({{ patient.id }}, '{{ patient.name }}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 添加患者模态框 -->
+<div class="modal fade" id="addPatientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加患者</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPatientForm">
+                    <div class="mb-3">
+                        <label for="patientName" class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="patientName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="patientContact" class="form-label">联系方式</label>
+                        <input type="text" class="form-control" id="patientContact" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="patientAge" class="form-label">年龄</label>
+                                <input type="number" class="form-control" id="patientAge" min="0" max="150" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="patientGender" class="form-label">性别</label>
+                                <select class="form-select" id="patientGender" required>
+                                    <option value="">请选择</option>
+                                    <option value="男">男</option>
+                                    <option value="女">女</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="patientAddress" class="form-label">地址</label>
+                        <input type="text" class="form-control" id="patientAddress">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addPatient()">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑患者模态框 -->
+<div class="modal fade" id="editPatientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑患者</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPatientForm">
+                    <input type="hidden" id="editPatientId">
+                    <div class="mb-3">
+                        <label for="editPatientName" class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="editPatientName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPatientContact" class="form-label">联系方式</label>
+                        <input type="text" class="form-control" id="editPatientContact" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPatientAge" class="form-label">年龄</label>
+                                <input type="number" class="form-control" id="editPatientAge" min="0" max="150" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPatientGender" class="form-label">性别</label>
+                                <select class="form-select" id="editPatientGender" required>
+                                    <option value="">请选择</option>
+                                    <option value="男">男</option>
+                                    <option value="女">女</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPatientAddress" class="form-label">地址</label>
+                        <input type="text" class="form-control" id="editPatientAddress">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updatePatient()">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 添加患者
+function addPatient() {
+    const formData = {
+        name: document.getElementById('patientName').value,
+        contact: document.getElementById('patientContact').value,
+        age: parseInt(document.getElementById('patientAge').value),
+        gender: document.getElementById('patientGender').value,
+        address: document.getElementById('patientAddress').value
+    };
+    
+    if (!formData.name || !formData.contact || !formData.age || !formData.gender) {
+        alert('请填写必填字段');
+        return;
+    }
+    
+    fetch('/patients/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('添加失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('添加失败');
+    });
+}
+
+// 编辑患者
+function editPatient(id, name, contact, age, gender, address) {
+    document.getElementById('editPatientId').value = id;
+    document.getElementById('editPatientName').value = name;
+    document.getElementById('editPatientContact').value = contact;
+    document.getElementById('editPatientAge').value = age;
+    document.getElementById('editPatientGender').value = gender;
+    document.getElementById('editPatientAddress').value = address;
+    
+    new bootstrap.Modal(document.getElementById('editPatientModal')).show();
+}
+
+// 更新患者
+function updatePatient() {
+    const id = document.getElementById('editPatientId').value;
+    const formData = {
+        name: document.getElementById('editPatientName').value,
+        contact: document.getElementById('editPatientContact').value,
+        age: parseInt(document.getElementById('editPatientAge').value),
+        gender: document.getElementById('editPatientGender').value,
+        address: document.getElementById('editPatientAddress').value
+    };
+    
+    if (!formData.name || !formData.contact || !formData.age || !formData.gender) {
+        alert('请填写必填字段');
+        return;
+    }
+    
+    fetch(`/patients/edit/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新失败');
+    });
+}
+
+// 删除患者
+function deletePatient(id, name) {
+    if (!confirm(`确定要删除患者 "${name}" 吗？此操作不可恢复！`)) {
+        return;
+    }
+    
+    fetch(`/patients/delete/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('删除失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败');
+    });
+}
+</script>
+{% endblock %} 

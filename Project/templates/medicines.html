@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}药品管理 - 社区医疗健康平台{% endblock %}
+{% block page_title %}药品管理{% endblock %}
+
+{% block content %}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">查询药品</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label">最低库存</label>
+                <input type="number" class="form-control" id="searchMinStock" min="0" placeholder="最低库存">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">最高价格</label>
+                <input type="number" class="form-control" id="searchMaxPrice" min="0" step="0.01" placeholder="最高价格">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">类别</label>
+                <select class="form-select" id="searchMedicineCategory">
+                    <option value="">全部类别</option>
+                    <option value="处方药">处方药</option>
+                    <option value="非处方药">非处方药</option>
+                    <option value="保健品">保健品</option>
+                </select>
+            </div>
+            <div class="col-12 text-end">
+                <button class="btn btn-outline-primary" onclick="searchMedicines()">查询</button>
+                <button class="btn btn-outline-secondary" onclick="clearMedicineSearch()">清空</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">药品列表</h5>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMedicineModal">
+            <i class="fas fa-plus"></i> 添加药品
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>药品名称</th>
+                        <th>类别</th>
+                        <th>价格</th>
+                        <th>库存</th>
+                        <th>生产厂家</th>
+                        <th>有效期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medicine in medicines %}
+                    <tr>
+                        <td>{{ medicine.id }}</td>
+                        <td>{{ medicine.name }}</td>
+                        <td>
+                            {% if medicine.category == '处方药' %}
+                            <span class="badge bg-danger">{{ medicine.category }}</span>
+                            {% elif medicine.category == '非处方药' %}
+                            <span class="badge bg-warning">{{ medicine.category }}</span>
+                            {% else %}
+                            <span class="badge bg-success">{{ medicine.category }}</span>
+                            {% endif %}
+                        </td>
+                        <td>￥{{ "%.2f"|format(medicine.price) }}</td>
+                        <td>
+                            <span class="{% if medicine.stock > 50 %}text-success{% elif medicine.stock > 10 %}text-warning{% else %}text-danger{% endif %}">
+                                {{ medicine.stock }}
+                            </span>
+                        </td>
+                        <td>{{ medicine.manufacturer or '未知' }}</td>
+                        <td>
+                            {% if medicine.expiry_date %}
+                                {{ medicine.expiry_date.strftime('%Y-%m-%d') }}
+                            {% else %}
+                                <span class="text-muted">未设置</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editMedicine({{ medicine.id }}, '{{ medicine.name }}', '{{ medicine.category }}', {{ medicine.price }}, {{ medicine.stock }}, '{{ medicine.manufacturer or '' }}', '{{ medicine.description or '' }}', '{{ medicine.expiry_date.strftime('%Y-%m-%d') if medicine.expiry_date else '' }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="updateStock({{ medicine.id }}, {{ medicine.stock }}, '{{ medicine.name }}')">
+                                <i class="fas fa-boxes"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMedicine({{ medicine.id }}, '{{ medicine.name }}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 添加药品模态框 -->
+<div class="modal fade" id="addMedicineModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加药品</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addMedicineForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medicineName" class="form-label">药品名称</label>
+                                <input type="text" class="form-control" id="medicineName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medicineCategory" class="form-label">药品类别</label>
+                                <select class="form-select" id="medicineCategory" required>
+                                    <option value="">请选择类别</option>
+                                    <option value="处方药">处方药</option>
+                                    <option value="非处方药">非处方药</option>
+                                    <option value="保健品">保健品</option>
+                                    <option value="医疗器械">医疗器械</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medicinePrice" class="form-label">价格 (元)</label>
+                                <input type="number" class="form-control" id="medicinePrice" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medicineStock" class="form-label">库存数量</label>
+                                <input type="number" class="form-control" id="medicineStock" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medicineManufacturer" class="form-label">生产厂家</label>
+                                <input type="text" class="form-control" id="medicineManufacturer">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medicineExpiryDate" class="form-label">有效期</label>
+                                <input type="date" class="form-control" id="medicineExpiryDate">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="medicineDescription" class="form-label">药品描述</label>
+                        <textarea class="form-control" id="medicineDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addMedicine()">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑药品模态框 -->
+<div class="modal fade" id="editMedicineModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑药品</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editMedicineForm">
+                    <input type="hidden" id="editMedicineId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMedicineName" class="form-label">药品名称</label>
+                                <input type="text" class="form-control" id="editMedicineName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMedicineCategory" class="form-label">药品类别</label>
+                                <select class="form-select" id="editMedicineCategory" required>
+                                    <option value="">请选择类别</option>
+                                    <option value="处方药">处方药</option>
+                                    <option value="非处方药">非处方药</option>
+                                    <option value="保健品">保健品</option>
+                                    <option value="医疗器械">医疗器械</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMedicinePrice" class="form-label">价格 (元)</label>
+                                <input type="number" class="form-control" id="editMedicinePrice" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMedicineStock" class="form-label">库存数量</label>
+                                <input type="number" class="form-control" id="editMedicineStock" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMedicineManufacturer" class="form-label">生产厂家</label>
+                                <input type="text" class="form-control" id="editMedicineManufacturer">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMedicineExpiryDate" class="form-label">有效期</label>
+                                <input type="date" class="form-control" id="editMedicineExpiryDate">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMedicineDescription" class="form-label">药品描述</label>
+                        <textarea class="form-control" id="editMedicineDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateMedicine()">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 库存更新模态框 -->
+<div class="modal fade" id="updateStockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">更新库存</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updateStockForm">
+                    <input type="hidden" id="updateStockMedicineId">
+                    <div class="mb-3">
+                        <label for="updateStockMedicineName" class="form-label">药品名称</label>
+                        <input type="text" class="form-control" id="updateStockMedicineName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="updateStockQuantity" class="form-label">新库存数量</label>
+                        <input type="number" class="form-control" id="updateStockQuantity" min="0" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="confirmUpdateStock()">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+function searchMedicines() {
+    const params = new URLSearchParams();
+    const minStock = document.getElementById('searchMinStock').value;
+    const maxPrice = document.getElementById('searchMaxPrice').value;
+    const category = document.getElementById('searchMedicineCategory').value;
+
+    if (minStock) params.set('min_stock', minStock);
+    if (maxPrice) params.set('max_price', maxPrice);
+    if (category) params.set('category', category);
+
+    fetch(`/search/medicines?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(med => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${med.id}</td>
+                    <td>${med.name}</td>
+                    <td>${med.category}</td>
+                    <td>￥${med.price.toFixed(2)}</td>
+                    <td>${med.stock}</td>
+                    <td>${med.manufacturer || '未知'}</td>
+                    <td>${med.expiry_date}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editMedicine(
+                            ${med.id},
+                            '${med.name}',
+                            '${med.category}',
+                            ${med.price.toFixed(2)},
+                            '${med.stock}',
+                            '${med.manufacturer || '未知'}',
+                            '${med.expiry_date}'
+                        )">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+function clearMedicineSearch() {
+    document.getElementById('searchMinStock').value = '';
+    document.getElementById('searchMaxPrice').value = '';
+    document.getElementById('searchMedicineCategory').value = '';
+    location.reload();
+}
+
+
+
+// 添加药品
+function addMedicine() {
+    const formData = {
+        name: document.getElementById('medicineName').value,
+        category: document.getElementById('medicineCategory').value,
+        price: document.getElementById('medicinePrice').value,
+        stock: document.getElementById('medicineStock').value,
+        manufacturer: document.getElementById('medicineManufacturer').value,
+        description: document.getElementById('medicineDescription').value,
+        expiry_date: document.getElementById('medicineExpiryDate').value
+    };
+    
+    if (!formData.name || !formData.category || !formData.price || !formData.stock) {
+        alert('请填写必填字段');
+        return;
+    }
+    
+    fetch('/medicines/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('添加失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('添加失败');
+    });
+}
+
+// 编辑药品
+function editMedicine(id, name, category, price, stock, manufacturer, description, expiryDate) {
+    document.getElementById('editMedicineId').value = id;
+    document.getElementById('editMedicineName').value = name;
+    document.getElementById('editMedicineCategory').value = category;
+    document.getElementById('editMedicinePrice').value = price;
+    document.getElementById('editMedicineStock').value = stock;
+    document.getElementById('editMedicineManufacturer').value = manufacturer;
+    document.getElementById('editMedicineDescription').value = description;
+    document.getElementById('editMedicineExpiryDate').value = expiryDate;
+    
+    new bootstrap.Modal(document.getElementById('editMedicineModal')).show();
+}
+
+// 更新药品
+function updateMedicine() {
+    const id = document.getElementById('editMedicineId').value;
+    const formData = {
+        name: document.getElementById('editMedicineName').value,
+        category: document.getElementById('editMedicineCategory').value,
+        price: document.getElementById('editMedicinePrice').value,
+        stock: document.getElementById('editMedicineStock').value,
+        manufacturer: document.getElementById('editMedicineManufacturer').value,
+        description: document.getElementById('editMedicineDescription').value,
+        expiry_date: document.getElementById('editMedicineExpiryDate').value
+    };
+    
+    if (!formData.name || !formData.category || !formData.price || !formData.stock) {
+        alert('请填写必填字段');
+        return;
+    }
+    
+    fetch(`/medicines/edit/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新失败');
+    });
+}
+
+// 更新库存
+function updateStock(id, currentStock, name) {
+    document.getElementById('updateStockMedicineId').value = id;
+    document.getElementById('updateStockMedicineName').value = name;
+    document.getElementById('updateStockQuantity').value = currentStock;
+    
+    new bootstrap.Modal(document.getElementById('updateStockModal')).show();
+}
+
+// 确认更新库存
+function confirmUpdateStock() {
+    const id = document.getElementById('updateStockMedicineId').value;
+    const newStock = document.getElementById('updateStockQuantity').value;
+    
+    if (!newStock || newStock < 0) {
+        alert('请输入有效的库存数量');
+        return;
+    }
+    
+    fetch(`/medicines/stock/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({stock: newStock})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('库存更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('库存更新失败');
+    });
+}
+
+// 删除药品
+function deleteMedicine(id, name) {
+    if (!confirm(`确定要删除药品 "${name}" 吗？此操作不可恢复！`)) {
+        return;
+    }
+    
+    fetch(`/medicines/delete/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('删除失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败');
+    });
+}
+</script>
+{% endblock %} 

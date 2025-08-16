@@ -1,0 +1,10 @@
+Flask==3.1.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-Migrate==4.0.5
+pandas==2.3.1
+plotly==5.17.0
+diagrams==0.23.3
+openpyxl==3.1.2
+python-dotenv==1.0.0
+pyodbc==5.0.1 

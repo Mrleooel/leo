@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}开具处方 - 社区医疗健康平台{% endblock %}
+{% block page_title %}开具处方{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">开处方</h5>
+    </div>
+    <div class="card-body">
+        <form id="prescriptionForm">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">选择预约</label>
+                    <select class="form-select" id="appointmentSelect" required>
+                        <option value="">请选择预约</option>
+                        {% for apt in appointments %}
+                        <option value="{{ apt.id }}">{{ apt.patient.name }} - {{ apt.doctor.name }} ({{ apt.date.strftime('%Y-%m-%d %H:%M') }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">选择药品</label>
+                    <select class="form-select" id="medicineSelect" required>
+                        <option value="">请选择药品</option>
+                        {% for med in medicines %}
+                        <option value="{{ med.id }}">{{ med.name }} (库存: {{ med.stock }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label class="form-label">数量</label>
+                    <input type="number" class="form-control" id="quantityInput" min="1" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">用法用量（可选）</label>
+                    <input type="text" class="form-control" id="dosageInput">
+                </div>
+            </div>
+            <div class="text-end mt-3">
+                <button type="button" class="btn btn-primary" onclick="submitPrescription()">开具处方</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function submitPrescription() {
+    const data = {
+        appointment_id: document.getElementById('appointmentSelect').value,
+        medicine_id: document.getElementById('medicineSelect').value,
+        quantity: document.getElementById('quantityInput').value,
+        dosage: document.getElementById('dosageInput').value
+    };
+
+    if (!data.appointment_id || !data.medicine_id || !data.quantity) {
+        alert('请完整填写');
+        return;
+    }
+
+    fetch('/prescriptions/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        alert(result.message);
+        if (result.success) {
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

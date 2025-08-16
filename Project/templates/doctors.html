@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}医生管理 - 社区医疗健康平台{% endblock %}
+{% block page_title %}医生管理{% endblock %}
+
+{% block content %}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">查询医生</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label">姓名</label>
+                <input type="text" class="form-control" id="searchDoctorName" placeholder="输入医生姓名">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">科室</label>
+                <select class="form-select" id="searchDoctorDepartment">
+                    <option value="">全部科室</option>
+                    <option value="内科">内科</option>
+                    <option value="外科">外科</option>
+                    <option value="儿科">儿科</option>
+                    <option value="妇科">妇科</option>
+                    <option value="眼科">眼科</option>
+                    <option value="口腔科">口腔科</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">状态</label>
+                <select class="form-select" id="searchDoctorAvailable">
+                    <option value="">全部</option>
+                    <option value="true">可用</option>
+                    <option value="false">不可用</option>
+                </select>
+            </div>
+            <div class="col-12 text-end">
+                <button class="btn btn-outline-primary" onclick="searchDoctors()">查询</button>
+                <button class="btn btn-outline-secondary" onclick="clearDoctorSearch()">清空</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">医生列表</h5>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDoctorModal">
+            <i class="fas fa-plus"></i> 添加医生
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>姓名</th>
+                        <th>科室</th>
+                        <th>职称</th>
+                        <th>联系方式</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doctor in doctors %}
+                    <tr>
+                        <td>{{ doctor.id }}</td>
+                        <td>{{ doctor.name }}</td>
+                        <td>{{ doctor.department }}</td>
+                        <td>{{ doctor.title }}</td>
+                        <td>{{ doctor.phone or '未设置' }}</td>
+                        <td>
+                            <span class="badge {% if doctor.available %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if doctor.available %}可用{% else %}不可用{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editDoctor({{ doctor.id }}, '{{ doctor.name }}', '{{ doctor.department }}', '{{ doctor.title }}', '{{ doctor.phone or '' }}', {{ doctor.available|lower }})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="toggleDoctorAvailability({{ doctor.id }}, {{ doctor.available|lower }})">
+                                <i class="fas fa-toggle-on"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteDoctor({{ doctor.id }}, '{{ doctor.name }}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 添加医生模态框 -->
+<div class="modal fade" id="addDoctorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加医生</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDoctorForm">
+                    <div class="mb-3">
+                        <label for="doctorName" class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="doctorName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="doctorDepartment" class="form-label">科室</label>
+                        <select class="form-select" id="doctorDepartment" required>
+                            <option value="">请选择科室</option>
+                            <option value="内科">内科</option>
+                            <option value="外科">外科</option>
+                            <option value="儿科">儿科</option>
+                            <option value="妇科">妇科</option>
+                            <option value="眼科">眼科</option>
+                            <option value="口腔科">口腔科</option>
+                            <option value="皮肤科">皮肤科</option>
+                            <option value="骨科">骨科</option>
+                            <option value="神经科">神经科</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="doctorTitle" class="form-label">职称</label>
+                        <select class="form-select" id="doctorTitle" required>
+                            <option value="">请选择职称</option>
+                            <option value="主任医师">主任医师</option>
+                            <option value="副主任医师">副主任医师</option>
+                            <option value="主治医师">主治医师</option>
+                            <option value="住院医师">住院医师</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="doctorPhone" class="form-label">联系方式</label>
+                        <input type="tel" class="form-control" id="doctorPhone">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="doctorAvailable" checked>
+                            <label class="form-check-label" for="doctorAvailable">
+                                可用状态
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addDoctor()">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑医生模态框 -->
+<div class="modal fade" id="editDoctorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑医生</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDoctorForm">
+                    <input type="hidden" id="editDoctorId">
+                    <div class="mb-3">
+                        <label for="editDoctorName" class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="editDoctorName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDoctorDepartment" class="form-label">科室</label>
+                        <select class="form-select" id="editDoctorDepartment" required>
+                            <option value="">请选择科室</option>
+                            <option value="内科">内科</option>
+                            <option value="外科">外科</option>
+                            <option value="儿科">儿科</option>
+                            <option value="妇科">妇科</option>
+                            <option value="眼科">眼科</option>
+                            <option value="口腔科">口腔科</option>
+                            <option value="皮肤科">皮肤科</option>
+                            <option value="骨科">骨科</option>
+                            <option value="神经科">神经科</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDoctorTitle" class="form-label">职称</label>
+                        <select class="form-select" id="editDoctorTitle" required>
+                            <option value="">请选择职称</option>
+                            <option value="主任医师">主任医师</option>
+                            <option value="副主任医师">副主任医师</option>
+                            <option value="主治医师">主治医师</option>
+                            <option value="住院医师">住院医师</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDoctorPhone" class="form-label">联系方式</label>
+                        <input type="tel" class="form-control" id="editDoctorPhone">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editDoctorAvailable">
+                            <label class="form-check-label" for="editDoctorAvailable">
+                                可用状态
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateDoctor()">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+function searchDoctors() {
+    const params = new URLSearchParams();
+    const name = document.getElementById('searchDoctorName').value;
+    const department = document.getElementById('searchDoctorDepartment').value;
+    const available = document.getElementById('searchDoctorAvailable').value;
+
+    if (name) params.set('name', name);
+    if (department) params.set('department', department);
+    if (available !== '') params.set('available', available);
+
+    fetch(`/search/doctors?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(doc => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${doc.id}</td>
+                    <td>${doc.name}</td>
+                    <td>${doc.department}</td>
+                    <td>${doc.title}</td>
+                    <td>${doc.phone || '未设置'}</td>
+                    <td><span class="badge ${doc.available ? 'bg-success' : 'bg-secondary'}">${doc.available ? '可用' : '不可用'}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editDoctor(
+                            ${doc.id},
+                            '${doc.name}',
+                            '${doc.department}',
+                            '${doc.title}',
+                            '${doc.phone || '未设置'}',
+                            '${doc.available }'
+                        )">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+function clearDoctorSearch() {
+    document.getElementById('searchDoctorName').value = '';
+    document.getElementById('searchDoctorDepartment').value = '';
+    document.getElementById('searchDoctorAvailable').value = '';
+    location.reload();
+}
+
+// 添加医生
+function addDoctor() {
+    const formData = {
+        name: document.getElementById('doctorName').value,
+        department: document.getElementById('doctorDepartment').value,
+        title: document.getElementById('doctorTitle').value,
+        phone: document.getElementById('doctorPhone').value,
+        available: document.getElementById('doctorAvailable').checked
+    };
+
+    if (!formData.name || !formData.department || !formData.title) {
+        alert('请填写必填字段');
+        return;
+    }
+
+    fetch('/doctors/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('添加失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('添加失败');
+    });
+}
+
+// 编辑医生
+function editDoctor(id, name, department, title, phone, available) {
+    document.getElementById('editDoctorId').value = id;
+    document.getElementById('editDoctorName').value = name;
+    document.getElementById('editDoctorDepartment').value = department;
+    document.getElementById('editDoctorTitle').value = title;
+    document.getElementById('editDoctorPhone').value = phone;
+    document.getElementById('editDoctorAvailable').checked = available;
+
+    new bootstrap.Modal(document.getElementById('editDoctorModal')).show();
+}
+
+// 更新医生
+function updateDoctor() {
+    const id = document.getElementById('editDoctorId').value;
+    const formData = {
+        name: document.getElementById('editDoctorName').value,
+        department: document.getElementById('editDoctorDepartment').value,
+        title: document.getElementById('editDoctorTitle').value,
+        phone: document.getElementById('editDoctorPhone').value,
+        available: document.getElementById('editDoctorAvailable').checked
+    };
+
+    if (!formData.name || !formData.department || !formData.title) {
+        alert('请填写必填字段');
+        return;
+    }
+
+    fetch(`/doctors/edit/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('更新失败');
+    });
+}
+
+// 切换医生可用状态
+function toggleDoctorAvailability(id, currentAvailable) {
+    if (!confirm('确定要切换医生状态吗？')) {
+        return;
+    }
+
+    fetch(`/doctors/toggle/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('状态更新失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('状态更新失败');
+    });
+}
+
+// 删除医生
+function deleteDoctor(id, name) {
+    if (!confirm(`确定要删除医生 "${name}" 吗？此操作不可恢复！`)) {
+        return;
+    }
+
+    fetch(`/doctors/delete/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('删除失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败');
+    });
+}
+</script>
+{% endblock %}
